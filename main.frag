@@ -1,4 +1,3 @@
-//#include "noise2D.glsl"
 #include "noise3D.glsl"
 
 /* glslViewer uniforms */
@@ -7,9 +6,12 @@ uniform float u_time;
 
 /* constants */
 const float GRID = 50.0;
-const float SCRAMBLE_1 = 123.53;
+const float SCRAMBLE_1 = 632.53;
 const float SCRAMBLE_2 = 345.74;
-const float SCRAMBLE_3 = 42.42;
+const float SCRAMBLE_3 = 83.42;
+
+const vec3 SEED = vec3(11.34, 42.78, 51.12);
+
 const float NOISE_SPATIAL_FREQ = 0.05; // lower freq == smoother
 const float SQ_NOISE_FREQ = .07;
 const float RING_THICKNESS = 0.05;
@@ -17,9 +19,9 @@ const float TIME_FACTOR = 0.075;
 const float MASK_LOW = 0.17;
 const float MASK_HIGH = 0.55;
 const float COL_SPREAD = 0.35; // how much colour changes near masked
-const bool GREYSCALE = true;
+const bool GREYSCALE = false;
 const bool WIGGLE = true;
-const bool FILLED_CIRCLES = true;
+const bool FILLED_CIRCLES = false;
 const bool FILLED_SQUARES = false;
 const bool INVERT = true; // not invert col but noise map
 const bool SQUARES = true;
@@ -54,7 +56,7 @@ void main() {
 	// noise
 	float noise = snoise(vec3(
 		id * NOISE_SPATIAL_FREQ + u_time*TIME_FACTOR*.2,
-		u_time * TIME_FACTOR)) 
+		u_time * TIME_FACTOR) + SEED) 
 		* 0.5 + 0.5; // [0, 1]
 
 	// how bright/dark 
@@ -84,7 +86,7 @@ void main() {
 		float colMask;
 
 		if (INVERT) {
-			colMask = smoothstep(MASK_HIGH+COL_SPREAD, MASK_LOW, noise);
+			colMask = smoothstep(MASK_HIGH-COL_SPREAD, MASK_LOW, noise);
 		} else {
 			colMask = smoothstep(MASK_LOW, MASK_HIGH+COL_SPREAD, noise);
 		}
@@ -109,7 +111,7 @@ float hash21(vec2 pos) {
 }
 
 float ring(float hash, vec2 gPos, float thickness, float mask) {
-	float radius = mix(0.2, 0.5, hash);
+	float radius = mix(0.2, 0.5, mask);
 	radius *= sin(hash * (u_time + SCRAMBLE_3)) * 0.5 + 0.5;
 	float distance = length(gPos);
 	
