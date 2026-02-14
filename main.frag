@@ -12,13 +12,14 @@ const float SCRAMBLE_2 = 345.74;
 const float SCRAMBLE_3 = 42.42;
 const float NOISE_SPATIAL_FREQ = 0.05; // lower freq == smoother
 const float RING_THICKNESS = 0.05;
-const float TIME_FACTOR = 0.1;
+const float TIME_FACTOR = 0.075;
 const float MASK_LOW = 0.17;
-const float MASK_HIGH = 0.3;
+const float MASK_HIGH = 0.55;
 const float COL_SPREAD = 0.35; // how much colour changes near masked
 const bool GREYSCALE = false;
 const bool WIGGLE = true;
-const bool FILLED_CIRCLES = true;
+const bool FILLED_CIRCLES = false;
+const bool INVERT = true;
 
 /* prototypes */
 float hash21(vec2 pos);
@@ -54,17 +55,28 @@ void main() {
 
 	// decide whether or not to draw a circle
 	float ink = 0.0;
-	float mask = smoothstep(MASK_LOW, MASK_HIGH, noise);
+	float mask;
+	if (INVERT) {
+		mask = smoothstep(MASK_HIGH, MASK_LOW, noise);
+	} else {
+		mask = smoothstep(MASK_LOW, MASK_HIGH, noise);
+	}
 	ink = ring(hash, gPos, RING_THICKNESS, mask) * mask;
 
 	vec3 finalCol = vec3(ink);
 	if (!GREYSCALE) {
-		float redMask = smoothstep(MASK_LOW, MASK_HIGH+COL_SPREAD, noise);
+		float colMask;
+
+		if (INVERT) {
+			colMask = smoothstep(MASK_HIGH+COL_SPREAD, MASK_LOW, noise);
+		} else {
+			colMask = smoothstep(MASK_LOW, MASK_HIGH+COL_SPREAD, noise);
+		}
 
 		//float foo = pos.x/GRID * sin(id.x * 100.0 + u_time)+0.2;
 		float t = abs(fract(u_time * 0.1) * 2.0 - 1.0);
 
-		vec3 ringCol = vec3(0.75*redMask*t, 0.4, 0.4);
+		vec3 ringCol = vec3(0.2, 0.4, 1.0*colMask*t + 0.3);
 		finalCol = ringCol * ink;
 	}
 	
@@ -86,7 +98,7 @@ float ring(float hash, vec2 gPos, float thickness, float mask) {
 	float distance = length(gPos);
 	
 	float d;
-	if (FILLED_CIRCLES) {
+	if (hash > 0.5) {
 		d = distance - radius; // perfect ring has 0
 	} else {
 		d = abs(distance - radius); // perfect ring has 0
