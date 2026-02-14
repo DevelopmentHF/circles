@@ -11,19 +11,23 @@ const float SCRAMBLE_1 = 123.53;
 const float SCRAMBLE_2 = 345.74;
 const float SCRAMBLE_3 = 42.42;
 const float NOISE_SPATIAL_FREQ = 0.05; // lower freq == smoother
+const float SQ_NOISE_FREQ = .07;
 const float RING_THICKNESS = 0.05;
 const float TIME_FACTOR = 0.075;
 const float MASK_LOW = 0.17;
 const float MASK_HIGH = 0.55;
 const float COL_SPREAD = 0.35; // how much colour changes near masked
-const bool GREYSCALE = false;
+const bool GREYSCALE = true;
 const bool WIGGLE = true;
-const bool FILLED_CIRCLES = false;
-const bool INVERT = true;
+const bool FILLED_CIRCLES = true;
+const bool FILLED_SQUARES = false;
+const bool INVERT = true; // not invert col but noise map
+const bool SQUARES = true;
 
 /* prototypes */
 float hash21(vec2 pos);
 float ring(float hash, vec2 gPos, float thickness, float mask);
+float square(float hash, vec2 gPos, float thickness);
 
 float sdRoundedX( in vec2 p, in float w, in float r )
 {
@@ -53,7 +57,7 @@ void main() {
 		u_time * TIME_FACTOR)) 
 		* 0.5 + 0.5; // [0, 1]
 
-	// decide whether or not to draw a circle
+	// how bright/dark 
 	float ink = 0.0;
 	float mask;
 	if (INVERT) {
@@ -61,7 +65,19 @@ void main() {
 	} else {
 		mask = smoothstep(MASK_LOW, MASK_HIGH, noise);
 	}
-	ink = ring(hash, gPos, RING_THICKNESS, mask) * mask;
+	
+	// seperate noise for clusters of shapes
+	float shapeMask;
+	float shapeNoise = snoise2(id * SQ_NOISE_FREQ);
+
+	shapeMask = smoothstep(MASK_LOW, MASK_HIGH, shapeNoise);
+
+	// draw
+	if (shapeMask > 0.9 && SQUARES) {
+		ink = square(hash, gPos, RING_THICKNESS) * mask;
+	} else {
+		ink = ring(hash, gPos, RING_THICKNESS, mask) * mask;
+	}
 
 	vec3 finalCol = vec3(ink);
 	if (!GREYSCALE) {
@@ -98,7 +114,7 @@ float ring(float hash, vec2 gPos, float thickness, float mask) {
 	float distance = length(gPos);
 	
 	float d;
-	if (hash > 0.5) {
+	if (FILLED_CIRCLES) {
 		d = distance - radius; // perfect ring has 0
 	} else {
 		d = abs(distance - radius); // perfect ring has 0
@@ -106,6 +122,18 @@ float ring(float hash, vec2 gPos, float thickness, float mask) {
 	
 	// tolerance (thickness allowance)
 	return smoothstep(thickness, thickness-0.01, d);
+}
+
+float square(float hash, vec2 gPos, float thickness) {
+	vec2 absg = abs(gPos);
+	float length = mix(0.2, 0.5, hash);
+	length *= sin(hash * (u_time + SCRAMBLE_2)) * 0.5 + 0.5;
+	float dist = max(absg.x, absg.y) - length;
+	if (FILLED_SQUARES) {
+		return smoothstep(thickness, thickness-0.01, dist);
+	} else {
+		return smoothstep(thickness, thickness-0.01, abs(dist));
+	}
 }
 
 
